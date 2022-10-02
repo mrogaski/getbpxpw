@@ -1,30 +1,30 @@
-# NAME
+# getbpxpw
 
-getbpxpw -- utility to recover BPX user passwords
+Cisco BPX 8600 password extraction
 
-# SYNOPSIS
+## SYNOPSIS
 
 getbpxpw NODE
 
-# DESCRIPTION
+## DESCRIPTION
 
 This utility performs a memory dump on a BPX 8600 and extracts the username/password database.
 
-# ARGUMENTS
+## ARGUMENTS
 
-## NODE
+### NODE
 
 The name of the BPX to extract passwords from.
 
-# OPTIONS
+## OPTIONS
 
 None.
 
-# NOTES
+## NOTES
 
 This utility uses a simplified version of the password "decryption" as
 described by Jay Masuda.
 
-# AUTHOR
+## AUTHOR
 
 Mark Rogaski, C<mrogaski@cpan.org>
